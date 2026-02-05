@@ -1,6 +1,7 @@
 import streamlit as st
 import google.generativeai as genai
 from PIL import Image
+import urllib.parse # Nécessaire pour encoder le texte en lien image
 
 # --- 1. IMPORTATION MÉMOIRE ---
 try:
@@ -20,8 +21,9 @@ except:
 
 # --- SIDEBAR ---
 with st.sidebar:
+    st.image("https://cdn-icons-png.flaticon.com/512/4825/4825038.png", width=60)
     st.title("🍑 SVB Manager")
-    st.caption("Direction Artistique : Active")
+    st.caption("DA & Moteur Image : Actifs")
     st.markdown("---")
     
     if api_key:
@@ -44,7 +46,7 @@ def generate_content(prompt_type, context, creative_level="Normal"):
             prompt = f"""
             Tu es le Directeur Artistique et Marketing du studio SVB.
             
-            TA BIBLE (DA & OFFRES) :
+            TA BIBLE (DA, TARIFS, RÈGLES) :
             {INFO_STUDIO}
             
             TA MISSION :
@@ -52,10 +54,10 @@ def generate_content(prompt_type, context, creative_level="Normal"):
             Niveau de créativité : {creative_level}
             Contexte : {context}
             
-            CONSIGNES VISUELLES IMPÉRATIVES (DA) :
-            - Utilise un vocabulaire "Organique", "Fluide", "Cocon", "Premium".
-            - Si tu suggères des émojis, utilise la palette : 🍑, 🌿, 🍦, 🌾, ✨.
-            - Bannis les termes agressifs ("No Pain No Gain", "Guerre"). Préfère "Flow", "Ancrage", "Sculpter".
+            CONSIGNES :
+            - Respecte STRICTEMENT les tarifs et règles de la mémoire.
+            - Utilise le vocabulaire de la DA ("Organique", "Cocon", "Premium").
+            - Palette émojis : 🍑, 🌿, 🍦, 🌾, ✨.
             """
             
             response = model.generate_content(prompt)
@@ -66,72 +68,86 @@ def generate_content(prompt_type, context, creative_level="Normal"):
     except Exception as e:
         st.error(f"Erreur : {e}")
 
-def generate_image_prompt(description):
+def generate_real_image(description):
     if not api_key:
+        st.error("Il faut la clé API pour créer la recette de l'image.")
         return
+
     try:
+        # ETAPE 1 : On demande à Gemini de créer le prompt parfait (la recette)
         genai.configure(api_key=api_key.strip())
         model = genai.GenerativeModel('gemini-2.5-flash')
         
-        with st.spinner("🎨 Calcul du prompt visuel SVB..."):
-            prompt = f"""
-            Agis comme un expert en Prompt Engineering pour Midjourney ou DALL-E.
+        with st.spinner("🧑‍🍳 1/2 : L'IA écrit la recette visuelle (Prompt)..."):
+            prompt_request = f"""
+            Agis comme un expert photographe. 
+            Transforme cette idée : "{description}" en un prompt court en ANGLAIS pour générer une photo réaliste.
             
-            TA MISSION :
-            Transforme cette idée : "{description}" en un prompt de génération d'image ultra-détaillé qui respecte STRICTEMENT la DA de SVB.
+            RÈGLES IMPÉRATIVES DE LA DA SVB :
+            - Colors: Peach, Sage Green, Cream tones.
+            - Lighting: Soft, warm, cinematic.
+            - Style: High definition photography, minimalist, premium wellness studio.
+            - Subject: {description}
             
-            RÈGLES DE LA DA À INCLURE DANS LE PROMPT :
-            - Couleurs : Peach (#EBC6A6), Sage Green (#88C0A6), Cream (#F3EBD4), Warm lighting.
-            - Ambiance : Soft, Organic, Premium, Glassmorphism elements, Cinematic lighting, High grain texture.
-            - Style : Editorial photography, highly detailed, 8k.
-            
-            Sortie attendue : Juste le prompt en Anglais, prêt à copier.
+            Sortie : Juste le texte du prompt en anglais, sans guillemets.
             """
-            response = model.generate_content(prompt)
-            st.info("💡 Copie ce texte dans un générateur d'image (Midjourney, etc) pour avoir le visuel parfait :")
-            st.code(response.text, language="bash")
+            response_prompt = model.generate_content(prompt_request)
+            english_prompt = response_prompt.text.strip()
+            
+            # On affiche le prompt pour info
+            st.caption(f"Recette générée : {english_prompt}")
+
+        # ETAPE 2 : On utilise un moteur gratuit (Pollinations) pour créer l'image
+        with st.spinner("🎨 2/2 : Développement de la photo..."):
+            # On encode le texte pour le mettre dans une URL
+            encoded_prompt = urllib.parse.quote(english_prompt)
+            image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=768&model=flux&nologo=true"
+            
+            st.markdown("---")
+            st.image(image_url, caption=f"📸 Visuel généré pour : {description}", use_container_width=True)
+            st.success("Image générée ! (Clic droit > Enregistrer l'image sous...)")
             
     except Exception as e:
         st.error(f"Erreur : {e}")
 
-# --- 4. INTERFACE UTILISATEUR ---
+# --- 4. INTERFACE ---
 if api_key:
     st.markdown("### 🍑 Studio Créatif & Stratégique")
     
-    tab1, tab2, tab3 = st.tabs(["⚡️ Actions Rapides", "🎨 Générateur Visuel (DA)", "🛠️ Mode Manuel"])
+    tab1, tab2, tab3 = st.tabs(["⚡️ Actions Rapides", "📸 Générateur PHOTO", "🛠️ Mode Manuel"])
 
     # --- TAB 1 : PRODUCTIVITÉ ---
     with tab1:
         c1, c2, c3 = st.columns(3)
         with c1:
-            if st.button("📅 Planning Semaine (Tableau)", use_container_width=True):
-                generate_content("Planning Éditorial Tableau", "Planning semaine prochaine varié (Reformer, Yoga, Kids).", "Stratégique")
+            if st.button("📅 Planning Semaine", use_container_width=True):
+                generate_content("Planning Éditorial Tableau", "Planning semaine pro varié.", "Stratégique")
         with c2:
-            if st.button("✨ Post 'Inspiration' (DA)", use_container_width=True):
-                generate_content("Post Instagram Lifestyle", "Sujet : L'équilibre vie pro / santé. Ton : Doux et motivant.", "Haut")
+            if st.button("✨ Post Inspiration", use_container_width=True):
+                generate_content("Post Instagram Lifestyle", "Sujet : Équilibre vie pro/perso.", "Haut")
         with c3:
-            if st.button("📩 Closing Client (Prix)", use_container_width=True):
-                generate_content("Script de Vente", "Objection : 'C'est trop cher'. Utilise l'argument 'Investissement vs Dépense'.", "Expert")
+            if st.button("📩 Closing Client", use_container_width=True):
+                generate_content("Script de Vente", "Objection : 'C'est trop cher'.", "Expert")
 
-    # --- TAB 2 : VISUEL & IMAGE ---
+    # --- TAB 2 : VISUEL ---
     with tab2:
-        st.markdown("#### 📸 Créateur de Visuels (Respectant la Charte #EBC6A6)")
-        st.caption("Décris l'image que tu veux, l'IA va créer la 'recette' parfaite avec tes couleurs.")
+        st.markdown("#### 📸 Studio Photo Virtuel")
+        st.info("Décris ce que tu veux voir, l'IA va le créer en respectant tes couleurs (Pêche/Sauge).")
         
-        desc_img = st.text_input("Idée de l'image :", placeholder="Ex: Une coach qui ajuste une posture sur le Reformer avec une lumière douce...")
+        desc_img = st.text_input("Je veux voir...", placeholder="Ex: Une séance de yoga calme avec une lumière pêche...")
         
-        if st.button("Générer le Prompt Image"):
-            generate_image_prompt(desc_img)
+        if st.button("✨ GÉNÉRER L'IMAGE", type="primary"):
+            if desc_img:
+                generate_real_image(desc_img)
+            else:
+                st.warning("Écris une description d'abord !")
 
     # --- TAB 3 : MANUEL ---
     with tab3:
-        st.write("Mode classique pour uploader des photos et analyser.")
-        uploaded_file = st.file_uploader("Analyser une photo", type=["jpg", "png"])
+        st.write("Mode classique (Upload Photo pour analyse)")
+        uploaded_file = st.file_uploader("Analyser une photo existante", type=["jpg", "png"])
         if uploaded_file:
             st.image(uploaded_file, width=200)
-            if st.button("Analyser cette photo"):
-                # Fonction simplifiée pour l'exemple
-                st.write("Analyse en cours... (Fonction à connecter si besoin)")
 
 else:
-    st.info("👈 Connecte ta clé pour activer le Studio DA.")
+    st.info("👈 Connecte ta clé.")
