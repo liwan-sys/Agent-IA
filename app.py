@@ -1,36 +1,31 @@
 import streamlit as st
 import google.generativeai as genai
 
-st.set_page_config(page_title="Debug Mode", page_icon="🐞")
-st.title("🐞 Mode Débuggage")
+st.title("🚀 Test Final de Connexion")
 
-# 1. On affiche la version installée pour comprendre le problème
-try:
-    import google.generativeai as genai
-    version = genai.__version__
-    st.info(f"ℹ️ Version du logiciel installée sur le serveur : {version}")
-except:
-    st.error("Le logiciel Google n'est pas installé du tout.")
-
-# 2. Case pour la clé
-api_key = st.text_input("Colle ta clé API", type="password")
+# Champ pour la clé
+api_key = st.text_input("Colle ta NOUVELLE clé API ici", type="password")
 
 if st.button("Lancer le test"):
     if not api_key:
-        st.warning("Pas de clé !")
+        st.warning("⚠️ Il faut coller la clé d'abord !")
     else:
+        st.info("1. Clé reçue, configuration en cours...")
+        
         try:
+            # On nettoie la clé et on configure
             genai.configure(api_key=api_key.strip())
             
-            # --- LE CHANGEMENT EST ICI ---
-            # On force le modèle 'gemini-pro' qui existe depuis longtemps
-            # et on évite 'gemini-1.5-flash' qui plante chez toi.
-            model = genai.GenerativeModel('gemini-pro')
+            st.info("2. Envoi du message à Gemini (ça peut prendre 5-10 sec)...")
             
-            response = model.generate_content("Dis juste le mot : SUCCÈS")
-            st.success("✅ ÇA MARCHE ENFIN !")
-            st.write(response.text)
+            # On utilise le modèle le plus fiable
+            model = genai.GenerativeModel('gemini-pro')
+            response = model.generate_content("Réponds juste par : BRAVO CA MARCHE")
+            
+            st.success("✅ VICTOIRE ! Connexion réussie.")
+            st.header(response.text)
             
         except Exception as e:
-            st.error("❌ Toujours une erreur...")
-            st.code(e) # Affiche l'erreur exacte pour que je puisse la lire
+            st.error("❌ Échec de la connexion.")
+            st.write(f"Détail de l'erreur : {e}")
+            st.info("Conseil : Vérifie que tu as bien copié toute la clé (elle commence souvent par 'AIza...')")
